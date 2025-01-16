@@ -36,7 +36,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import info.example.my.DAO.WeatherDAO;
+import info.example.my.func.WeatherDAO;
 import info.example.my.R;
 import info.example.my.etc.GpsTracker;
 import info.example.my.etc.Weatherdata;
