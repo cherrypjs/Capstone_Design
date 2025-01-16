@@ -28,9 +28,6 @@ public class GpsTracker implements LocationListener {
     private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 10;
     private static final long MIN_TIME_BW_UPDATES = 1000 * 60 * 1;
     protected LocationManager locationManager;
-    private String provider;
-    private int status;
-    private Bundle extras;
 
 
     public  GpsTracker(Context context) {

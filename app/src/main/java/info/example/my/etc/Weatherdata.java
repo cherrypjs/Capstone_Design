@@ -2,6 +2,9 @@ package info.example.my.etc;
 
 import android.content.Context;
 import android.util.Log;
+import android.widget.Toolbar;
+
+import com.google.firebase.BuildConfig;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,41 +20,43 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import info.example.my.DAO.WeatherDAO;
+
+
 
 
 public class Weatherdata extends Thread {
-    private  String nx;
-    private  String ny;
-    private static String sky, temperature, wind, rain, snow, pop ,tmx,tmn,reh;
+
+
+
+
+    private static String sky, temperature, wind, rain, snow, pop ,reh;
     private String current_weather_code;
     private Context mContext; // Context 변수
-    private WeatherDAO weatherDAO;
-    String numOfRows = "300";  // 한 페이지 결과 수
+    BuildConfig buildConfig;
+    String numOfRows = "80";  // 한 페이지 결과 수
     // 요청 자료 형식
 
     public Weatherdata(Context context) {
         this.mContext = context;
     }
-//	TMN	일 최저기온	℃	10 , TMX일 최고기온
 
 
     public String Weather(String time ,String nx,String ny) throws IOException, JSONException {
 
         Log.d(nx+ny, "weatherDAO: ");
         String base_date;
-        //
         String apiUrl = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+
         String serviceKey = "7OOR3ha2Lf%2BGOHFeDKltquZvhrK2uoOKuQkwrr%2B9LZaOcKew8L9MWRMqnVcHI%2BfmCf1mjOAzkwsPF2E3H4v3HQ%3D%3D";  // API 키
         String base_time = timeChange(time);
         LocalDate base_date1 = LocalDate.now();
         Log.d( "time~ ",base_time);
-        //현재시간으로 나타내기위해서 localtime  , localDatetime 사용
-        // LocalDate로 변경
+
+
         LocalDateTime timenow = LocalDateTime.now();
         String hourtime = timenow.format(DateTimeFormatter.ofPattern("HH00"));
         Log.d("time2!! ",hourtime);
-        //시간이 00~01시면 -1 일 해서 2300~ 0200 시간대 맞추기
+
         if (hourtime.equals("0000") || hourtime.equals("0100")){
 
             LocalDate yesterday =  base_date1.minusDays(1);
@@ -59,15 +64,11 @@ public class Weatherdata extends Thread {
             Log.d("base_date1", base_date);
 
         }else{
-            //02~~23까지 시간대..
+
 
             base_date =timenow.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
             Log.d("base_date2", base_date);
         }
-
-//        nx = "52";  // 예보 지점의 X 좌표
-//        ny = "125";  // 예보 지점의 Y 좌표
-        //현재날짜 확인 // 근데왜 day부분이 이상하게 나오는지?
 
 
 
@@ -82,17 +83,17 @@ public class Weatherdata extends Thread {
         urlBuilder.append("&" + URLEncoder.encode("nx", "UTF-8") + "=" + URLEncoder.encode(nx, "UTF-8"));
         urlBuilder.append("&" + URLEncoder.encode("ny", "UTF-8") + "=" + URLEncoder.encode(ny, "UTF-8"));
 
-        // URL 객체 생성
+
         URL url = new URL(urlBuilder.toString());
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Content-type", "application/json");
 
-        // 응답 코드 확인
+
         int responseCode = conn.getResponseCode();
         System.out.println("Response Code: " + responseCode);
 
-        // 결과를 버퍼로 읽어들임
+
         BufferedReader rd;
         if (responseCode >= 200 && responseCode <= 300) {
             rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -113,7 +114,7 @@ public class Weatherdata extends Thread {
 
         JSONObject jsonObj_1 = new JSONObject(result);
         String response = jsonObj_1.getString("response");
-        Log.d("@@@", result);
+        Log.d("Response Code", result);
         // response 로 부터 body 찾기
         JSONObject jsonObj_2 = new JSONObject(response);
         String body = jsonObj_2.getString("body");
@@ -139,76 +140,68 @@ public class Weatherdata extends Thread {
             //d여기까지 데이터안옴 왜??
             if (category.equals("SKY")) {
                 if (fcstValue.equals("1")) {
-                    sky = "맑음"+" ";
+                    sky = "맑음"+"  ";
                     current_weather_code = "1";
                 } else if (fcstValue.equals("2")) {
-                    sky = "비"+" ";
+                    sky = "비"+"  ";
                     current_weather_code = "2";
                 } else if (fcstValue.equals("3")) {
-                    sky = "구름많음"+" ";
+                    sky = "구름많음"+"  ";
                     current_weather_code = "3";
                 } else if (fcstValue.equals("4")) {
-                    sky = "흐림"+" ";
+                    sky = "흐림"+"  ";
                     current_weather_code = "4";
                 }
             }
 
-            //	POP	강수확률
-            //	PTY	강수형태
-            //	PCP	1시간 강수량
-            //	REH	습도
-            //	SNO	적설량
-            //	SKY	하늘상태
-            //	TMP	1시간 기온
-            //	TMN	일 최저기온
-            //	TMX	일 최고기온
-            //	UUU	풍속(동서성분)
-            //	VVV	풍속(남북성분)
-            //	WAV	파고	M	8
-            //	VEC	풍향	deg	10
-            //	WSD	풍속	m/s	10
+            //   POP   강수확률
+            //   PTY   강수형태
+            //   PCP   1시간 강수량
+            //   REH   습도
+            //   SNO   적설량
+            //   SKY   하늘상태
+            //   TMP   1시간 기온
+            //   TMN   일 최저기온
+            //   TMX   일 최고기온
+            //   UUU   풍속(동서성분)
+            //   VVV   풍속(남북성분)
+            //   WAV   파고   M   8
+            //   VEC   풍향   deg   10
+            //   WSD   풍속   m/s   10
             if (category.equals("TMP")) {
                 //기온
-                temperature = fcstValue+" ";
+                temperature = fcstValue+"  ";
             }
             if (category.equals("REH")) {
                 //습도
-                reh = fcstValue+" ";
+                reh = fcstValue+"  ";
             }
 
             if (category.equals("WSD")) {
                 //풍속
-                wind = fcstValue+" " ;
+                wind = fcstValue+"  " ;
             }
 
             if (category.equals("PCP")) {
                 //강수량
-                rain = fcstValue+" ";
+                rain = fcstValue+"  ";
             }
             if (category.equals("SNO")) {
                 //적설량
-                snow = fcstValue+" ";
+                snow = fcstValue+"  ";
             }
             if (category.equals("POP")) {
                 //강수확률
-                pop = fcstValue+" ";
-            }
-            if (category.equals("TMX")) {
-                //최고기온
-                tmx = fcstValue+" ";
-            }
-            if (category.equals("TMN")) {
-                //최저기온
-                tmn = fcstValue+" ";
+                pop = fcstValue+"  ";
             }
 
 
 
 
         }
-        String Current_Weather= sky+ rain+ temperature+ wind+ pop + snow + tmx + tmn;
+        String Current_Weather= sky + rain + temperature + wind + pop + snow + reh ;
         Log.d("Current_Weather", Current_Weather);
-        return sky + rain + temperature + wind + pop + snow + tmx + tmn+reh;
+        return sky + rain + temperature + wind + pop + snow + reh ;
 
     }
     public String timeChange(String time)
@@ -234,5 +227,4 @@ public class Weatherdata extends Thread {
         }
         return time;
     }
-
 }

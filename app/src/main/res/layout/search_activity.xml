@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mainContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/noontime_cloud_background"
+    android:visibility="visible"
+    tools:ignore="ExtraText,MissingPrefix">
+
+    <!-- Toolbar 추가 -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#F0F0F0"
+        android:textColor="#000000"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/CustomToolbarStyle"
+        app:menu="@menu/menu_activity" />
+
+    <!-- 기존 콘텐츠는 툴바 아래에 배치되도록 설정 -->
+    <LinearLayout
+        android:id="@+id/addressContainer"
+        android:layout_below="@id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:padding="20dp"
+        tools:ignore="NotSibling">
+        <AutoCompleteTextView
+            android:id="@+id/autoCompleteTextView"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:completionHint=""
+            android:text="검색"
+            android:completionThreshold="1"
+            android:gravity="center_vertical"
+            android:textColorHint="#555555"
+            android:textColor="#000000" />
+        <TextView
+            android:id="@+id/test_gps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Location"
+            android:textColor="#000000"
+            android:textSize="24sp"
+            android:layout_gravity="center_horizontal" /> <!-- 수평 중앙 정렬 -->
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="25dp"
+            android:gravity="right"
+            android:orientation="horizontal">
+
+
+            <TextView
+                android:id="@+id/tv_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Updated at"
+                android:textColor="#000000"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/overviewContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_cloud"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Clear Sky"
+            android:textSize="18sp"
+            android:textColor="#000000" />
+
+        <LinearLayout
+            android:id="@+id/temperatureContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:padding="10dp">
+<!--            <ImageView-->
+<!--                android:id="@+id/temperatureIcon"-->
+<!--                android:layout_width="120dp"-->
+<!--                android:layout_height="120dp"-->
+<!--                android:src="@drawable/sunrise"-->
+<!--                 />-->
+            <!-- 온도 표시 TextView -->
+            <TextView
+                android:id="@+id/tv_current_temperature"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="°C"
+                android:layout_gravity="center"
+                android:textSize="90sp"
+                android:textColor="#000000"
+                android:layout_marginEnd="10dp" /> <!-- 이미지와 간격을 주기 위한 marginEnd -->
+
+            <!-- 온도 옆에 표시될 이미지 -->
+
+        </LinearLayout>>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_tmn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Min temp"
+                android:textColor="#000000" />
+
+            <Space
+                android:layout_width="50dp"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/tv_tmx"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Max Temp"
+                android:textColor="#000000" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_pop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="강수확률"
+            android:textSize="18sp"
+            android:textColor="#000000" />
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:layout_alignParentTop="true"
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="50dp"
+        android:background="#3CF1EBF1"
+        android:gravity="bottom|center"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="#3CF1EBF1"
+            android:layout_width="0dp"
+            android:layout_height="86dp">
+
+            <ImageView
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/wind_icon"
+                app:tint="#FFF" />
+
+            <Space
+                android:layout_width="wrap_content"
+                android:layout_height="5dp" />
+
+            <TextView
+                android:textSize="12sp"
+                android:text="풍속"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+
+            <TextView
+                android:id="@+id/tv_wind"
+                android:textSize="14sp"
+                android:text=""
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+        </LinearLayout>
+
+        <!-- Similar blocks for snow, humidity, and rain -->
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="#3CF1EBF1"
+            android:layout_width="0dp"
+            android:layout_height="86dp">
+
+            <ImageView
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/snow_icon"
+                app:tint="#FFF" />
+
+            <Space
+                android:layout_width="wrap_content"
+                android:layout_height="5dp" />
+
+            <TextView
+                android:textSize="12sp"
+                android:text="적설량"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+
+            <TextView
+                android:id="@+id/tv_sno"
+                android:textSize="14sp"
+                android:text=""
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="#3CF1EBF1"
+            android:layout_width="0dp"
+            android:layout_height="86dp">
+
+            <ImageView
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/ref_icon"
+                app:tint="#FFF" />
+
+            <Space
+                android:layout_width="wrap_content"
+                android:layout_height="5dp" />
+
+            <TextView
+                android:textSize="12sp"
+                android:text="습도"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+
+            <TextView
+                android:id="@+id/tv_reh"
+                android:textSize="14sp"
+                android:text=""
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:padding="8dp"
+            android:background="#3CF1EBF1"
+            android:layout_width="0dp"
+            android:layout_height="86dp">
+
+            <ImageView
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@drawable/rain_icon"
+                app:tint="#FFF" />
+
+            <Space
+                android:layout_width="wrap_content"
+                android:layout_height="5dp" />
+
+            <TextView
+                android:textSize="12sp"
+                android:text="강수량"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+
+            <TextView
+                android:id="@+id/tv_rain"
+                android:textSize="14sp"
+                android:text=""
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#000000" />
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>
