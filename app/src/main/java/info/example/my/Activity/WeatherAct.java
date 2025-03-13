@@ -50,7 +50,9 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
+
 import info.example.my.Fragment.AlarmSettingsFragment;
+import info.example.my.DAO.WeatherDAO;
 import info.example.my.R;
 import info.example.my.etc.GpsTracker;
 import info.example.my.etc.Tmdata;
@@ -59,28 +61,6 @@ import info.example.my.func.AlarmReceiver;
 import jxl.Sheet;
 import jxl.Workbook;
 import jxl.read.biff.BiffException;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 public class WeatherAct extends AppCompatActivity {
