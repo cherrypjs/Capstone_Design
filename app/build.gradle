@@ -2,16 +2,33 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+// local.properties에서 API 키 읽기
+def weatherApiKey = properties.getProperty('WEATHER_API_KEY', "")
+if (weatherApiKey.isEmpty()) {
+    throw new GradleException("WEATHER_API_KEY is not set in local.properties.")
+}
+
 android {
     namespace 'info.example.my'
     compileSdk 34
-
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
         applicationId "info.example.my"
         minSdk 34
         targetSdk 34
         versionCode 1
         versionName "1.0"
+
+        // BuildConfig에 API 키 추가
+        buildConfigField "String", "WEATHER_API_KEY", "\"${weatherApiKey}\""
+
+        // AndroidManifest.xml에서 사용할 Placeholder 추가
+        manifestPlaceholders = [WEATHER_API_KEY: weatherApiKey]
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -36,9 +53,12 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'com.squareup.retrofit2:retrofit:2.8.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.8.0'
+    implementation "androidx.work:work-runtime:2.8.1"
+
     implementation libs.appcompat
     implementation libs.material
     implementation libs.activity
@@ -52,5 +72,4 @@ dependencies {
     androidTestImplementation libs.espresso.core
 
     implementation 'net.sourceforge.jexcelapi:jxl:2.6.12'
-
 }

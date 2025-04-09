@@ -2,4 +2,11 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <style name="CustomPopupMenuText" parent="Widget.AppCompat.Toolbar">
+        <item name="android:textColor">#FF000000</item> <!-- 검정색 -->
+
+    </style>
+    <style name="CustomToolbarStyle" parent="Widget.AppCompat.Toolbar">
+        <item name="android:actionMenuTextColor">#000000</item> <!-- 검정색 -->
+    </style>
 </resources>

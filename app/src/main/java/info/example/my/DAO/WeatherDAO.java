@@ -1,4 +1,4 @@
-package info.example.my.func;
+package info.example.my.DAO;
 
 import android.util.Log;
 
@@ -26,13 +26,6 @@ public class WeatherDAO {
         this.pop = pop;
         this.snow = snow;
     }
-
-
-
-    // 위치 업데이트 메소드
-
-
-
 
     public String getSky() {
         return sky;

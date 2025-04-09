@@ -1,65 +1,92 @@
 package info.example.my.Activity;
 
+import static android.util.Log.ERROR;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.appcompat.widget.Toolbar;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import org.apache.log4j.Logger;
 import org.json.JSONException;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
-import info.example.my.func.WeatherDAO;
+
+import info.example.my.Fragment.AlarmSettingsFragment;
+import info.example.my.DAO.WeatherDAO;
 import info.example.my.R;
 import info.example.my.etc.GpsTracker;
+import info.example.my.etc.Tmdata;
 import info.example.my.etc.Weatherdata;
+import info.example.my.func.AlarmReceiver;
 import jxl.Sheet;
 import jxl.Workbook;
 import jxl.read.biff.BiffException;
 
-public class WeatherAct extends AppCompatActivity {
-    private static final Logger log = Logger.getLogger(WeatherAct.class);
 
-    private WeatherDAO weatherData;
-    private TextView tv; // TextView를 참조하기 위한 변수 선언
+public class WeatherAct extends AppCompatActivity {
+
+
+    private SharedPreferences preferences;
+    private SharedPreferences.Editor editor;
+
     private TextView test_gps;
-    private TextView tv_tmp, tv_wind, tv_sky, tv_rain,tv_time, tv_pop, tv_sno,tv_tmn,tv_tmx,tv_reh;
+    private TextView tv_tmp, tv_wind, tv_sky, tv_rain, tv_time, tv_pop, tv_sno, tv_tmn, tv_tmx, tv_reh;
 
     private List<String> searchList;
-
+    String ttsData="";
 
     private GpsTracker gpsTracker;
     private String nx = "", ny = "", address = "";
     private static final int GPS_ENABLE_REQUEST_CODE = 2001;
     private static final int PERMISSIONS_REQUEST_CODE = 100;
+    private static final int REQUEST_ALARM_PERMISSION = 1324;
     String[] REQUIRED_PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+
+    private Calendar savedCalendar;
+    private String savedMessage;
+    private TextToSpeech tts;
+
+
 
     private Handler handler = new Handler(Looper.getMainLooper());
 
@@ -70,7 +97,14 @@ public class WeatherAct extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.weather_activity);
         searchItem();
-        // TextView 초기화
+        RelativeLayout mainContainer = findViewById(R.id.mainContainer);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        preferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
+        editor = preferences.edit();
+
 
         tv_sky = findViewById(R.id.tv_cloud);
         tv_tmp = findViewById(R.id.tv_current_temperature);
@@ -83,10 +117,6 @@ public class WeatherAct extends AppCompatActivity {
         tv_pop=findViewById(R.id.tv_pop);
         tv_reh=findViewById(R.id.tv_reh);
 
-//        tv_wind = findViewById(R.id.tv_wind);
-//        tv_humidity = findViewById(R.id.tv_humidity);
-//        tv_sno = findViewById(R.id.tv_sno);
-//        tv_rain = findViewById(R.id.tv_rain);
         if (!checkLocationServicesStatus()) {
             showDialogForLocationServiceSetting();
         } else {
@@ -102,118 +132,189 @@ public class WeatherAct extends AppCompatActivity {
         test_gps = findViewById(R.id.test_gps); // test_gps 초기화
 
         String[] local = address.split(" ");
-        String localName = local[3];
-        Log.d(localName, "localName: ");
-        readExcel(localName);
+        String localName0 = local[1];
+        String localName1 = local[2];
+        String localName2 = local[3];
+        Log.d("localname", localName0+localName1+localName2);
+
+
+        readExcel(localName0,localName1, localName2);
         String currentaddress = local[1] + " " +  local[2] + " " + local[3];
         test_gps.setText(currentaddress);
         Toast.makeText(WeatherAct.this, "현재위치 \n위도 " + latitude + "\n경도 " + longitude, Toast.LENGTH_LONG).show();
+        // 검색한 위치 주소 가져오기
+
+
+
+
         // 별도의 스레드에서 날씨 데이터 가져오기
         new Thread(() -> {
+            // Weatherdata 및 Tmdata 인스턴스 생성
 
-            Weatherdata at = new Weatherdata(this);
-            LocalDateTime time = LocalDateTime.now();
-            String tvtime = time.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-            String HHtime = time.format(DateTimeFormatter.ofPattern("HH00"));
-            tv_time.setText(tvtime);
+            Weatherdata at = new Weatherdata(this); // Context 올바르게 전달
+            Tmdata tm = new Tmdata(this );
 
-            Log.d("timeiswhat1", HHtime);
+            // 현재 시간 가져오기
+            LocalDateTime time1 = LocalDateTime.now();
+            String tvtime1 = time1.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+            String HHtime = time1.format(DateTimeFormatter.ofPattern("HH00"));
+
+            // UI 시간 설정
+            handler.post(() -> tv_time.setText(tvtime1));
+
             String weatherData = "";
+            String tmData = "";
 
             try {
-                weatherData = String.valueOf(at.Weather(HHtime,nx,ny));
-//
+                // API 호출
+                weatherData = String.valueOf(at.Weather(HHtime, nx, ny));
+                tmData = String.valueOf(tm.Weather(nx, ny));
             } catch (IOException | JSONException e) {
-                Log.e("WeatherError", e.getMessage());
+                Log.e("WeatherError", "Error fetching data: " + e.getMessage());
             }
 
-            // UI 업데이트는 메인 스레드에서 수행
-            String[] weatherarray = weatherData.split(" ");
+            // 데이터 파싱 및 UI 업데이트
+            final String[] weatherArray = weatherData.split("  ");
+            final String[] tmArray = tmData.split("  ");
+
             handler.post(() -> {
+
+
                 if (tv_sky != null) {
-                    if (weatherarray.length > 0) {
-                        tv_sky.setText( weatherarray[0]);//하늘상태
-                    } else {
-                        tv_sky.setText(" ");
-                    }
+                    tv_sky.setText(weatherArray.length > 0 ? weatherArray[0] : " ");
                 }
 
                 if (tv_rain != null) {
-                    if (weatherarray.length > 1) {
-                        tv_rain.setText( weatherarray[1]);//강수량
-                    } else{
-                        tv_rain.setText("error");
-                    }
+                    tv_rain.setText(weatherArray.length > 1 ? weatherArray[1] : "error");
                 }
 
                 if (tv_tmp != null) {
-                    if (weatherarray.length > 2) {
-                        tv_tmp.setText( weatherarray[2]+"°C");//온도
-                    } else {
-                        tv_tmp.setText("error");
-                    }
+                    tv_tmp.setText(weatherArray.length > 2 ? weatherArray[2] + "°C" : "error");
                 }
 
                 if (tv_wind != null) {
-                    if (weatherarray.length > 3) {
-                        tv_wind.setText(weatherarray[3]+"m/s");//풍속
-                    } else {
-                        tv_wind.setText("error");
-                    }
+                    tv_wind.setText(weatherArray.length > 3 ? weatherArray[3] + "m/s" : "error");
                 }
-
 
                 if (tv_pop != null) {
-                    if (weatherarray.length > 4) {
-                        tv_pop.setText("강수확률"+weatherarray[4]+"%");//습도
-                    } else {
-                        tv_pop.setText("error");
-                    }
-
-
+                    tv_pop.setText(weatherArray.length > 4 ? "강수확률" + weatherArray[4] + "%" : "error");
                 }
+
                 if (tv_sno != null) {
-                    if (weatherarray.length > 5) {
-                        tv_sno.setText( weatherarray[5]);//적설량
-                    } else {
-                        tv_sno.setText("error");
-                    }
+                    tv_sno.setText(weatherArray.length > 5 ? weatherArray[5] : "error");
                 }
-                if (tv_tmx != null) {
-                    if (weatherarray.length > 6) {
-                        tv_tmx.setText( weatherarray[6]+"°C");//최고기온
-                    } else {
-                        tv_tmx.setText("error");
-                    }
-                }
-                if (tv_tmn != null) {
-                    if (weatherarray.length > 7) {
-                        tv_tmn.setText(weatherarray[7]+"°C");//최저기온
-                    } else {
-                        tv_tmn.setText("error");
-                    }
-                }
+
                 if (tv_reh != null) {
-                    if (weatherarray.length > 8) {
-                        tv_reh.setText(weatherarray[8]+"%");//습도
-                    } else {
-                        tv_reh.setText("error");
-                    }
+                    tv_reh.setText(weatherArray.length > 6 ? weatherArray[6] + "%" : "error");
                 }
+
+                if (tv_tmx != null) {
+                    tv_tmx.setText(tmArray.length > 0 ? tmArray[0] + "C" : "error");
+                }
+
+                if (tv_tmn != null) {
+                    tv_tmn.setText(tmArray.length > 1 ? tmArray[1] + "C" : "error");
+                }
+                updateWeatherUI(weatherArray);
+                ttsData = currentaddress+"의 현재 하늘은"+weatherArray[0]+"이고 기온은"+weatherArray[2]+"도입니다.";
+                Log.d("tts",ttsData);
+                speak(ttsData);
             });
-
-        }).start(); // 새로운 스레드 시작
+        }).start();
+        // 새로운 스레드 시작
+    }
+    private void speak(String text) {
+        tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status != ERROR){
+                    int result = tts.setLanguage(Locale.KOREA); // 언어 선택
+                    if(result == TextToSpeech.LANG_NOT_SUPPORTED || result == TextToSpeech.LANG_MISSING_DATA){
+                        Log.e("TTS", "This Language is not supported");
+                    }else{
+                        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+                    }
+                }else{
+                    Log.e("TTS", "Initialization Failed!");
+                }
+            }
+        });
     }
 
-    // 현재 시간을 가져오는 메소드
-    private String getCurrentTime() {
-        long now = System.currentTimeMillis();
-        Date mDate = new Date(now);
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH00");
-        return simpleDateFormat.format(mDate);
-
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if(tts!=null){ // 사용한 TTS객체 제거
+            tts.stop();
+            tts.shutdown();
+        }
+        super.onDestroy();
     }
 
+    private void updateWeatherUI(String[] weatherArray) {
+        String skyCondition = weatherArray[0]; // 하늘 상태
+        String rainCondition = weatherArray[1]; // 강수량
+
+        // 시간대에 따른 처리 (아침, 점심, 저녁)
+        String timeOfDay = getTimeOfDay(); // 아침/점심/저녁 반환 메서드
+
+        RelativeLayout mainContainer = findViewById(R.id.mainContainer);
+
+        if (skyCondition.equals("맑음") && rainCondition.equals("강수없음")) {
+            // 맑은 날씨, 비 없음
+            if (timeOfDay.equals("아침")) {
+                mainContainer.setBackgroundResource(R.drawable.morning_background);
+            } else if (timeOfDay.equals("점심")) {
+                mainContainer.setBackgroundResource(R.drawable.noontime_background);
+            } else {
+                mainContainer.setBackgroundResource(R.drawable.evening_background);
+            }
+        } else if (skyCondition.equals("구름많음") || skyCondition.equals("흐림")) {
+            // 구름 낀 날
+            if (timeOfDay.equals("아침")) {
+                mainContainer.setBackgroundResource(R.drawable.morning_cloud_background);
+            } else if (timeOfDay.equals("점심")) {
+                mainContainer.setBackgroundResource(R.drawable.noontime_cloud_background);
+            } else {
+                mainContainer.setBackgroundResource(R.drawable.evening_cloud_background);
+            }
+        } else if (!rainCondition.equals("강수없음")) {
+            // 비 오는 날
+            if (timeOfDay.equals("아침")) {
+                mainContainer.setBackgroundResource(R.drawable.morning_rain_background);
+            } else if (timeOfDay.equals("점심")) {
+                mainContainer.setBackgroundResource(R.drawable.noontime_rain_background);
+            } else {
+                mainContainer.setBackgroundResource(R.drawable.evening_rain_background);
+            }
+        } else if (skyCondition.equals("눈")) {
+            // 눈 오는 날
+            if (timeOfDay.equals("아침")) {
+                mainContainer.setBackgroundResource(R.drawable.morning_snow_background);
+            } else if (timeOfDay.equals("점심")) {
+                mainContainer.setBackgroundResource(R.drawable.noontime_snow_background);
+            } else {
+                mainContainer.setBackgroundResource(R.drawable.evening_snow_background);
+            }
+        } else {
+            // 기본 배경
+            mainContainer.setBackgroundResource(R.drawable.noontime_cloud_background);
+        }
+    }
+
+
+    private String getTimeOfDay() {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+
+        if (hour >= 6 && hour < 12) {
+            return "아침";
+        } else if (hour >= 12 && hour < 18) {
+            return "점심";
+        } else {
+            return "저녁";
+        }
+    }
     public String getCurrentAddress(double latitude, double longitude) {
         // 지오코더... GPS를 주소로 변환
         Geocoder geocoder = new Geocoder(this, Locale.getDefault());
@@ -245,7 +346,7 @@ public class WeatherAct extends AppCompatActivity {
         builder.setPositiveButton("설정", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int id) {
-                Intent callGPSSettingIntent = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                Intent callGPSSettingIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
                 startActivityForResult(callGPSSettingIntent, GPS_ENABLE_REQUEST_CODE);
             }
         });
@@ -286,12 +387,17 @@ public class WeatherAct extends AppCompatActivity {
                 hasCoarseLocationPermission == PackageManager.PERMISSION_GRANTED) {
             // 위치 값을 가져올 수 있음
         } else {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(WeatherAct.this, REQUIRED_PERMISSIONS[0])) {
-                Toast.makeText(WeatherAct.this, "이 앱을 실행하려면 위치 접근 권한이 필요합니다.", Toast.LENGTH_LONG).show();
-                ActivityCompat.requestPermissions(WeatherAct.this, REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE);
-            } else {
-                ActivityCompat.requestPermissions(WeatherAct.this, REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE);
-            }
+            ActivityCompat.requestPermissions(WeatherAct.this, REQUIRED_PERMISSIONS, GPS_ENABLE_REQUEST_CODE);
+        }
+    }
+
+    // 알람 권한 요청
+    private void requestAlarmPermission(Calendar calendar, String message) {
+        savedCalendar = calendar;
+        savedMessage = message;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            requestPermissions(new String[]{Manifest.permission.SCHEDULE_EXACT_ALARM}, REQUEST_ALARM_PERMISSION);
         }
     }
 
@@ -300,7 +406,9 @@ public class WeatherAct extends AppCompatActivity {
                                            @NonNull String[] permissions,
                                            @NonNull int[] grandResults) {
         super.onRequestPermissionsResult(permsRequestCode, permissions, grandResults);
-        if (permsRequestCode == PERMISSIONS_REQUEST_CODE && grandResults.length == REQUIRED_PERMISSIONS.length) {
+
+        // 위치 권한 처리
+        if (permsRequestCode == GPS_ENABLE_REQUEST_CODE && grandResults.length == REQUIRED_PERMISSIONS.length) {
             boolean check_result = true;
             for (int result : grandResults) {
                 if (result != PackageManager.PERMISSION_GRANTED) {
@@ -308,29 +416,51 @@ public class WeatherAct extends AppCompatActivity {
                     break;
                 }
             }
+
             if (check_result) {
-                // 위치 값을 가져올 수 있음
+                Toast.makeText(this, "위치 권한이 승인되었습니다.", Toast.LENGTH_SHORT).show();
             } else {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[0])
                         || ActivityCompat.shouldShowRequestPermissionRationale(this, REQUIRED_PERMISSIONS[1])) {
-                    Toast.makeText(WeatherAct.this, "퍼미션이 거부되었습니다. 앱을 다시 실행하여 퍼미션을 허용해주세요.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "퍼미션이 거부되었습니다. 앱을 다시 실행하여 퍼미션을 허용해주세요.", Toast.LENGTH_LONG).show();
                     finish();
                 } else {
-                    Toast.makeText(WeatherAct.this, "퍼미션이 거부되었습니다. 설정(앱 정보)에서 퍼미션을 허용해야 합니다.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "퍼미션이 거부되었습니다. 설정(앱 정보)에서 퍼미션을 허용해야 합니다.", Toast.LENGTH_LONG).show();
                 }
             }
         }
 
+        // 알람 권한 처리
+        if (permsRequestCode == REQUEST_ALARM_PERMISSION) {
+            if (grandResults.length > 0 && grandResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "알람 권한이 승인되었습니다.", Toast.LENGTH_SHORT).show();
+                // 알람 설정 호출
+                scheduleAlarm(savedCalendar, savedMessage);
+            } else {
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.SCHEDULE_EXACT_ALARM)) {
+                    Toast.makeText(this, "알람 권한이 거부되었습니다. 다시 요청하세요.", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "알람 권한이 거부되었습니다. 설정(앱 정보)에서 권한을 허용해야 합니다.", Toast.LENGTH_LONG).show();
+                }
+            }
+        }
     }
 
 
+    // 알람 권한 요청 메서드 (별도로 호출할 필요 없으면 삭제 가능)
+    private void requestAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // Android 12 이상에서 필요
+            requestPermissions(new String[]{Manifest.permission.SCHEDULE_EXACT_ALARM}, REQUEST_ALARM_PERMISSION);
+        }
+    }
 
-    // 저장한 엑셀파일 읽어오기
-    public void readExcel(String localName) {
+
+    public void readExcel(String localName0, String localName1, String localName2) {
         try {
             InputStream is = getBaseContext().getResources().getAssets().open("local_name.xls");
             Workbook wb = Workbook.getWorkbook(is);
-            weatherData = new WeatherDAO();
+
+
             if (wb != null) {
                 Sheet sheet = wb.getSheet(0);   // 시트 불러오기
                 if (sheet != null) {
@@ -339,14 +469,39 @@ public class WeatherAct extends AppCompatActivity {
                     int rowTotal = sheet.getColumn(colTotal - 1).length;
 
                     for (int row = rowIndexStart; row < rowTotal; row++) {
-                        String cell0Contents = sheet.getCell(0, row).getContents();
-                        String cell1Contents = sheet.getCell(1, row).getContents();
+                        String cell0Contents = sheet.getCell(0, row).getContents().trim();
+                        Log.i("EXCEL_DEBUG", "cell0Contents: " + cell0Contents);
 
-                        if (cell0Contents.contains(localName)|| cell1Contents.contains(localName)) {
-                            nx = sheet.getCell(2, row).getContents();  // nx
-                            ny = sheet.getCell(3, row).getContents();  // ny // ny
-                            row = rowTotal;
-                            Log.i("READ_EXCEL1", "x = " + nx + "  y = " + ny);
+                        // localName0이 포함된 경우
+                        if (cell0Contents.contains(localName0)) {
+                            String cell1Contents = sheet.getCell(1, row).getContents().trim();  // 공백 제거
+                            String cell2Contents = sheet.getCell(2, row).getContents().trim();  // 공백 제거
+                            Log.i("EXCEL_DEBUG", "cell1Contents: " + cell1Contents);
+                            Log.i("EXCEL_DEBUG1", "cell2Contents: " + cell2Contents);
+
+                            // localName1이 있는지 먼저 확인
+                            if (cell1Contents.equalsIgnoreCase(localName1)) {
+                                // localName2가 있는지 확인
+                                if (cell2Contents.equalsIgnoreCase(localName2)) {
+                                    // nx, ny 값을 가져오고 루프 종료
+                                    nx = sheet.getCell(3, row).getContents();  // nx
+                                    ny = sheet.getCell(4, row).getContents();  // ny
+                                    Log.i("READ_EXCEL1", "x = " + nx + "  y = " + ny);
+                                    break; // 루프 종료
+                                } else {
+                                    // localName2가 없으면 localName1로 nx, ny 값을 가져옴
+                                    if (!cell2Contents.isEmpty()) {
+                                        nx = sheet.getCell(3, row).getContents();  // nx
+                                        ny = sheet.getCell(4, row).getContents();  // ny
+                                        Log.i("READ_EXCEL1_LOCALNAME1", "x = " + nx + "  y = " + ny);
+                                        break; // 루프 종료
+                                    } else {
+                                        // localName2가 없고 cell2Contents도 비어있으면 다음 행으로 계속 진행
+                                        Log.i("EXCEL_DEBUG", "cell2Contents is empty, continuing to next row");
+                                        continue;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -359,19 +514,33 @@ public class WeatherAct extends AppCompatActivity {
             Log.i("READ_EXCEL1", e.getMessage());
             e.printStackTrace();
         }
-
     }
+
+
     public void searchItem() {
         searchList = new ArrayList<>();
         settingList();
 
-        AutoCompleteTextView autoCompleteTextView = findViewById(R.id.autoCompleteTextView); // 수정된 부분
+        AutoCompleteTextView autoCompleteTextView = findViewById(R.id.autoCompleteTextView);
 
-        // AutoCompleteTextView에 어댑터를 연결합니다.
+        // AutoCompleteTextView에 어댑터 연결
         ArrayAdapter<String> adapter = new ArrayAdapter<>(WeatherAct.this,
                 android.R.layout.simple_dropdown_item_1line, searchList);
         autoCompleteTextView.setAdapter(adapter);
+
+        // 아이템 선택 시 처리
+        autoCompleteTextView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String selectedItem = parent.getItemAtPosition(position).toString();
+                Intent intent = new Intent(WeatherAct.this, SearchActivity.class);
+                intent.putExtra("selected_location", selectedItem);
+                startActivity(intent);
+
+            }
+        });
     }
+
     private void settingList(){
         searchList.add("서울특별시 종로구");
         searchList.add("서울특별시 중구");
@@ -641,5 +810,112 @@ public class WeatherAct extends AppCompatActivity {
         searchList.add("제주특별자치도 서귀포시");
 
     }
-}
+    public boolean onCreateOptionsMenu(Menu menu){
+        MenuInflater inflater =getMenuInflater();
+        inflater.inflate(R.menu.menu_activity,menu);
+        return true;
+    }
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_settings) { // 다이얼로그 생성 및 표시
+            showSettingsDialog();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 
+
+    private void showSettingsDialog() {
+        String[] options = {"알림 on/off", "소리 on/off", "알림 설정 ","재시작"};
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("설정")
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // 알림 설정
+                            showNotificationSettingsDialog();
+                            break;
+                        case 1: // 소리 설정
+                            showSoundSettingsDialog();
+                            break;
+                        case 2:
+                            AlarmSettingsFragment alarmSettingsFragment = new AlarmSettingsFragment();
+                            alarmSettingsFragment.show(getSupportFragmentManager(), "AlarmSettingsFragment");
+                            break;
+                        case 3: // 옵션 3
+                            Intent intent3 = new Intent(this, FirstAct.class);//fragment 사용해서 위에 창하나 띄우는 형식으로 행ㅇ야할듯? 돌아오기 해야함
+                            startActivity(intent3);
+                            break;
+                    }
+                })
+                .setNegativeButton("취소", (dialog, which) -> dialog.dismiss());
+        builder.create().show();
+    }
+    private void showNotificationSettingsDialog() {
+        Log.d("NotificationSettings", "Notification settings dialog opened"); // 디버깅용 로그
+        boolean isNotificationEnabled = preferences.getBoolean("notifications_enabled", false); // 기본값: false
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("알림 설정")
+                .setMessage("현재 알림 상태: " + (isNotificationEnabled ? "켜짐" : "꺼짐"))
+                .setPositiveButton(isNotificationEnabled ? "알림 끄기" : "알림 켜기", (dialog, which) -> {
+                    // 상태 변경 및 저장
+                    editor.putBoolean("notifications_enabled", !isNotificationEnabled);
+                    editor.apply();
+                    Toast.makeText(this, "알림이 " + (!isNotificationEnabled ? "켜졌습니다." : "꺼졌습니다."), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("닫기", (dialog, which) -> dialog.dismiss());
+        builder.create().show();
+    }
+
+    private void showSoundSettingsDialog() {
+        boolean isSoundEnabled = preferences.getBoolean("sound_enabled", false); // 기본값: false
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("소리 설정")
+                .setMessage("현재 소리 상태: " + (isSoundEnabled ? "켜짐" : "꺼짐"))
+                .setPositiveButton(isSoundEnabled ? "소리 끄기" : "소리 켜기", (dialog, which) -> {
+                    // 상태 변경 및 저장
+                    editor.putBoolean("sound_enabled", !isSoundEnabled);
+                    editor.apply();
+                    Toast.makeText(this, "소리가 " + (!isSoundEnabled ? "켜졌습니다." : "꺼졌습니다."), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("닫기", (dialog, which) -> dialog.dismiss());
+        builder.create().show();
+
+    }
+
+
+    // 정확한 알람 설정 메서드
+    private void scheduleAlarm(Calendar calendar, String message) {
+        // 권한 확인
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SCHEDULE_EXACT_ALARM) != PackageManager.PERMISSION_GRANTED) {
+            // 권한 요청이 필요함
+            Toast.makeText(this, "정확한 알람 권한이 필요합니다.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 정확한 알람을 예약할 수 있는지 확인
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager != null && !alarmManager.canScheduleExactAlarms()) {
+                Toast.makeText(this, "정확한 알람 예약을 할 수 없습니다. 설정에서 권한을 허용해주세요.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        Intent intent = new Intent(this, AlarmReceiver.class);
+        intent.putExtra("message", message);
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        if (alarmManager != null) {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+            Toast.makeText(this, "알람이 설정되었습니다!", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+}
